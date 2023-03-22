@@ -39,26 +39,22 @@ class PanguFormatter {
 				content = content.trim();
 				content = content + "\n";
 
-				// 替换所有的全角数字为半角数字
+				// // 替换所有的全角数字为半角数字
 				content = this.replaceFullNums(content);
-				// 替换所有的全角英文 为 半角的英文
+				// // 替换所有的全角英文 为 半角的英文
 				content = this.replaceFullChars(content);
-				// 删除多余的内容（回车）
-				content = this.condenseContent(content);
 
 				// // 每行操作
 				content = content.split("\n").map((line) => {
 					// 中文内部使用全角标点
-					line = this.replacePunctuations(line);
-					// 删除多余的空格
-					line = this.deleteSpaces(line);
+					// line = this.replacePunctuations(line);
 					// 插入必要的空格
 					line = this.insertSpace(line);
 					// 修正网址链接中错误替换的字符，例如[](中文.md)中的.会被替换成。
 					line = this.recoverPunctuations(line);
 
 					// 在标题的 # 后面需要增加空格
-					line= line.replace(/^(#{1,})\s*(\S)/g,"$1 $2");
+					line= line.replace(/^(#+)\s*(\S)/g,"$1 $2");
 
 					return line;
 				}).join("\n");
@@ -129,16 +125,14 @@ class PanguFormatter {
 	insertSpace(content) {
 		// 在 “中文English” 之间加入空格 “中文 English”
 		// 在 “中文123” 之间加入空格 “中文 123”
-		content = content.replace(/([\u4e00-\u9fa5\u3040-\u30FF])([a-zA-Z0-9`])/g, '$1 $2');
+		content = content.replace(/([\u4e00-\u9fa5\u3040-\u30FF])([\w`])/g, '$1 $2');
 
 		// 在 “English中文” 之间加入空格 “English 中文”
 		// 在 “123中文” 之间加入空格 “123 中文”
-		content = content.replace(/([a-zA-Z0-9%`])([*]*[\u4e00-\u9fa5\u3040-\u30FF])/g, "$1 $2");
-
-		// 在 「100Gbps」之间加入空格「100 Gbps」（只有手工做，不能自动做，会破坏密码网址等信息）
+		content = content.replace(/([\w%`])([*]*[\u4e00-\u9fa5\u3040-\u30FF])/g, "$1 $2");
 		
-		// 在 「I said:it's a good news」的冒号与英文之间加入空格 「I said: it's a good news」
-		content = content.replace(/([:])\s*([a-zA-z])/g, "$1 $2");
+		// // 在 I said:it's a good news的冒号与英文之间加入空格 I said: it's a good news
+		// content = content.replace(/(\w):(\w)/g, "$1: $2");
 		return content;
 	};
 
@@ -290,10 +284,25 @@ class PanguFormatter {
 	};
 
 	recoverPunctuations(content) {
+		// 
+
 		// 处理类似[abc](./中文文件。md)的情况
 		// []内的认为是表述文本，需要pangu过滤
 		// ()内的是超链接，不应该替换
-		content = content.replace(/\[(.*)\]\(()\)/g, "[$1]($2)");
+		content = content.replace(/\[(.*)\]\((.*)。(.*)\)/g, "[$1]($2.$3)");
+
+		// 处理类似[abc](./my中文文件.md)的情况
+		// 之前的处理会把my和后面的中文分开
+		// 由于vscode写入文件路径时会自动把所有空格转为%20，因此这里只需要去除所有空格即可
+
+		var numOfSpace = content.match(/\s/g);
+		// 有可能没有空格
+		if (numOfSpace !== null){
+			for (var i = 0; i < numOfSpace.length; i++){
+				content = content.replace(/\[(.*)\]\((.*)\s(.*)\)/g, "[$1]($2$3)");
+				}
+		}
+
 		return content
 	};
 };
