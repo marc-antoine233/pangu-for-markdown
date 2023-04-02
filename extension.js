@@ -36,8 +36,9 @@ class PanguFormatter {
 			vscode.window.activeTextEditor.edit((editorBuilder) => {
 				let content = doc.getText(this.current_document_range(doc));
 				// 去除开头和结尾的换行和空格 之后在按照markdown的规则，结尾应当为孤立的一行空行
-				content = content.trim();
-				content = content + "\n";
+				// 这一步感觉不需要 markdownlint 可以直接搞定
+				// content = content.trim();
+				// content = content + "\n";
 
 				// // 替换所有的全角数字为半角数字
 				content = this.replaceFullNums(content);
@@ -125,11 +126,13 @@ class PanguFormatter {
 	insertSpace(content) {
 		// 在 “中文English” 之间加入空格 “中文 English”
 		// 在 “中文123” 之间加入空格 “中文 123”
-		content = content.replace(/([\u4e00-\u9fa5\u3040-\u30FF])([\w`])/g, '$1 $2');
-
+		// 在 "中文$" 之间加入空格
+		content = content.replace(/([\u4e00-\u9fa5\u3040-\u30FF])([\w`$])/g, '$1 $2');
+		
 		// 在 “English中文” 之间加入空格 “English 中文”
 		// 在 “123中文” 之间加入空格 “123 中文”
-		content = content.replace(/([\w%`])([*]*[\u4e00-\u9fa5\u3040-\u30FF])/g, "$1 $2");
+		// 在 "$中文" 之间加入空格
+		content = content.replace(/([\w%`$])([*]*[\u4e00-\u9fa5\u3040-\u30FF])/g, "$1 $2");
 		
 		// // 在 I said:it's a good news的冒号与英文之间加入空格 I said: it's a good news
 		// content = content.replace(/(\w):(\w)/g, "$1: $2");
@@ -294,6 +297,7 @@ class PanguFormatter {
 		// 处理类似[abc](./my中文文件.md)的情况
 		// 之前的处理会把my和后面的中文分开
 		// 由于vscode写入文件路径时会自动把所有空格转为%20，因此这里只需要去除所有空格即可
+		// 注意#标题中的空格是默认转成-而非%20
 
 		var numOfSpace = content.match(/\s/g);
 		// 有可能没有空格
